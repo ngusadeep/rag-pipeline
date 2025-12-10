@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     top_k_retrieval: int = 5
     llm_temperature: float = 0.0
     llm_model: str = "gpt-4o-mini"
+    rag_mode: str = "chain"  # options: "chain" (default) or "agent"
 
     model_config = SettingsConfigDict(
         # Load .env file from backend/.env

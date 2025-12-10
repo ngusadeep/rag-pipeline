@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta
 from typing import Optional
+from hashlib import sha256
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -18,14 +19,29 @@ class AuthService:
     """Service for handling authentication and authorization."""
 
     @staticmethod
+    def _prepare_password(password: str) -> str:
+        """
+        Prepare password for bcrypt hashing.
+        Bcrypt has a 72-byte limit, so we hash longer passwords with SHA256 first.
+        """
+        password_bytes = password.encode('utf-8')
+        if len(password_bytes) > 72:
+            # Hash with SHA256 first, then bcrypt the hash
+            sha256_hash = sha256(password_bytes).hexdigest()
+            return sha256_hash
+        return password
+
+    @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """Verify a password against a hash."""
-        return pwd_context.verify(plain_password, hashed_password)
+        prepared_password = AuthService._prepare_password(plain_password)
+        return pwd_context.verify(prepared_password, hashed_password)
 
     @staticmethod
     def get_password_hash(password: str) -> str:
         """Hash a password."""
-        return pwd_context.hash(password)
+        prepared_password = AuthService._prepare_password(password)
+        return pwd_context.hash(prepared_password)
 
     @staticmethod
     def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

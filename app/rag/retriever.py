@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 from langchain_core.documents import Document
-from langchain_pinecone import PineconeVectorStore
+from langchain_community.vectorstores import Pinecone as PineconeVectorStore
 from app.rag.embeddings import EmbeddingService
 from app.core.config import settings
 import structlog

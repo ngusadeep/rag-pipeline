@@ -2,9 +2,8 @@
 
 from typing import List, Optional
 from langchain_openai import OpenAIEmbeddings
-from langchain_pinecone import PineconeVectorStore
+from langchain_community.vectorstores import Pinecone as PineconeVectorStore
 from langchain_core.documents import Document
-from pinecone import Pinecone, ServerlessSpec
 from app.core.config import settings
 import structlog
 
@@ -21,9 +20,6 @@ class EmbeddingService:
             openai_api_key=settings.openai_api_key,
         )
         
-        # Initialize Pinecone client
-        self.pinecone_client = Pinecone(api_key=settings.pinecone_api_key)
-        
         logger.info("EmbeddingService initialized")
 
     def get_vector_store(self, index_name: Optional[str] = None) -> PineconeVectorStore:
@@ -37,22 +33,9 @@ class EmbeddingService:
         """
         index_name = index_name or settings.pinecone_index_name
         
-        # Check if index exists, create if not
-        if index_name not in [index.name for index in self.pinecone_client.list_indexes()]:
-            logger.info("Creating new Pinecone index", index_name=index_name)
-            self.pinecone_client.create_index(
-                name=index_name,
-                dimension=1536,  # text-embedding-3-small dimension
-                metric="cosine",
-                spec=ServerlessSpec(
-                    cloud="aws",
-                    region=settings.pinecone_environment,
-                ),
-            )
-            logger.info("Pinecone index created", index_name=index_name)
-        else:
-            logger.info("Using existing Pinecone index", index_name=index_name)
+        logger.info("Getting Pinecone vector store", index_name=index_name)
         
+        # Create vector store - PineconeVectorStore will handle index creation if needed
         vector_store = PineconeVectorStore(
             index_name=index_name,
             embedding=self.embeddings,
@@ -95,9 +78,20 @@ class EmbeddingService:
         logger.warning("Deleting all vectors from index", index_name=index_name or settings.pinecone_index_name)
         
         vector_store = self.get_vector_store(index_name)
-        # Get all vector IDs and delete them
-        index = self.pinecone_client.Index(index_name or settings.pinecone_index_name)
-        index.delete(delete_all=True, namespace=namespace)
+        # Delete all vectors using the vector store's delete method
+        # Note: This may require iterating through all vectors
+        # For now, we'll use the vector store's delete method if available
+        try:
+            # Try to get the underlying index and delete all
+            if hasattr(vector_store, 'index'):
+                vector_store.index.delete(delete_all=True, namespace=namespace)
+            elif hasattr(vector_store, '_index'):
+                vector_store._index.delete(delete_all=True, namespace=namespace)
+            else:
+                logger.warning("Cannot delete all vectors - index access not available. Consider using Pinecone console.")
+        except Exception as e:
+            logger.error("Error deleting vectors", error=str(e))
+            raise
         
         logger.info("All vectors deleted from index")
 

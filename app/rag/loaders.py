@@ -6,8 +6,14 @@ from langchain_community.document_loaders import (
     WebBaseLoader,
     PyPDFLoader,
     TextLoader,
-    UnstructuredFileLoader,
 )
+
+# Optional import for unstructured loader (not available for Python 3.12+)
+try:
+    from langchain_community.document_loaders import UnstructuredFileLoader
+    HAS_UNSTRUCTURED = True
+except ImportError:
+    HAS_UNSTRUCTURED = False
 from langchain_core.documents import Document
 import structlog
 
@@ -75,9 +81,17 @@ class DocumentLoader:
                 elif file_path.suffix.lower() in [".txt", ".md"]:
                     docs = DocumentLoader.load_from_text(str(file_path))
                 else:
-                    # Try unstructured loader for other file types
-                    loader = UnstructuredFileLoader(str(file_path))
-                    docs = loader.load()
+                    # Try unstructured loader for other file types (if available)
+                    if HAS_UNSTRUCTURED:
+                        loader = UnstructuredFileLoader(str(file_path))
+                        docs = loader.load()
+                    else:
+                        logger.warning(
+                            "Unstructured loader not available. Skipping file",
+                            file_path=str(file_path),
+                            suffix=file_path.suffix
+                        )
+                        continue
                 
                 documents.extend(docs)
                 logger.info("Loaded file", file_path=str(file_path), chunks=len(docs))
@@ -100,4 +114,3 @@ class DocumentLoader:
                 logger.warning("Failed to load URL", url=url, error=str(e))
                 continue
         return all_documents
-

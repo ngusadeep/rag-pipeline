@@ -88,11 +88,7 @@ backend/
 
 3. **Create `.env` file**
 
-   ```bash
-   cp .env.example .env
-   ```
-
-   Edit `.env` and add your API keys:
+   Create a `.env` file in the project root with the following variables:
 
    ```env
    OPENAI_API_KEY=your_openai_api_key
@@ -102,6 +98,16 @@ backend/
    DATABASE_URL=postgresql://postgres:postgres@localhost:5432/bplus_rag_db
    SECRET_KEY=your_secret_key_here
    ```
+
+   **Generate a secure SECRET_KEY:**
+
+   Use the provided script:
+
+   ```bash
+   python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+   ```
+
+   Copy the generated key to your `.env` file as `SECRET_KEY=...`
 
 4. **Set up database**
 
@@ -249,6 +255,7 @@ All configuration is loaded from `.env` file. Key settings:
 - `TOP_K_RETRIEVAL`: Number of documents to retrieve (default: 5)
 - `LLM_TEMPERATURE`: LLM temperature for factual answers (default: 0.0)
 - `LLM_MODEL`: OpenAI model to use (default: gpt-4o-mini)
+- `RAG_MODE`: Choose `chain` (fast, always retrieve) or `agent` (LangChain agentic RAG that decides when/how to retrieve; default: chain)
 
 ## Development
 

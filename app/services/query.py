@@ -5,8 +5,10 @@ import json
 from typing import Optional
 from sqlalchemy.orm import Session
 from app.rag.chain import RAGChain
+from app.rag.agent import RAGAgent
 from app.models.logs import QueryLog
 from app.schemas.query import Source
+from app.core.config import settings
 import structlog
 
 logger = structlog.get_logger()
@@ -17,7 +19,13 @@ class QueryService:
 
     def __init__(self):
         """Initialize the query service."""
-        self.rag_chain = RAGChain()
+        rag_mode = settings.rag_mode.lower()
+        if rag_mode == "agent":
+            self.rag_engine = RAGAgent()
+            logger.info("QueryService initialized with agentic RAG mode")
+        else:
+            self.rag_engine = RAGChain()
+            logger.info("QueryService initialized with chain RAG mode")
 
     def process_query(
         self,
@@ -42,8 +50,8 @@ class QueryService:
         try:
             logger.info("Processing query", query=query[:50])
             
-            # Query the RAG chain
-            result = self.rag_chain.query_with_sources(query)
+            # Query the configured RAG engine (agentic or chain)
+            result = self.rag_engine.query_with_sources(query)
             
             # Calculate response time
             response_time_ms = int((time.time() - start_time) * 1000)
