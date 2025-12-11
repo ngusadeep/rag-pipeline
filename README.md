@@ -44,7 +44,7 @@ Chroma persists to `data/chroma`. Update `.env` for model keys.
 ## Project Structure
 
 - `app/main.py` — FastAPI app entry.
-- `app/api/routes.py` — routes for health, index, retrieve, generate.
+- `app/api/routes/` — route modules for health, index, retrieve, generate.
 - `app/services/rag.py` — RAG orchestration (index/retrieve/generate).
 - `app/services/vector_store.py` — Chroma + embeddings management.
 - `app/core/config.py` — Pydantic settings from env.
