@@ -2,10 +2,12 @@
 
 import shutil
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.core.config import get_settings
+from app.core.dependencies import get_current_admin_user
 from app.models.schemas import UploadResponse
+from app.models.user import User
 from app.services.rag import ingest_file
 
 router = APIRouter()
@@ -14,7 +16,10 @@ ALLOWED_TYPES = {"application/pdf", "text/plain", "application/octet-stream"}
 
 
 @router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_201_CREATED)
-async def upload_document(file: UploadFile = File(...)) -> UploadResponse:
+async def upload_document(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_admin_user),
+) -> UploadResponse:
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

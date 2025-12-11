@@ -1,8 +1,8 @@
 """Pydantic schemas for API requests and responses."""
 
-from typing import List
+from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class HealthResponse(BaseModel):
@@ -28,3 +28,28 @@ class SourceChunk(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     sources: List[SourceChunk]
+
+
+# Authentication schemas
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    is_active: bool
+    is_admin: bool
+
+    class Config:
+        from_attributes = True

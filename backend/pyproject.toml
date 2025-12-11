@@ -19,6 +19,9 @@ pydantic-settings = "^2.6.1"
 python-dotenv = "^1.0.1"
 pypdf = "^5.1.0"
 python-multipart = "^0.0.12"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+sqlalchemy = "^2.0.35"
 
 [tool.poetry.group.dev.dependencies]
 httpx = "^0.28.0"
