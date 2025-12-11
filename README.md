@@ -1,38 +1,39 @@
-# BiasharaPlus RAG API
+# Basic RAG Pipeline (LangChain + OpenAI + ChromaDB)
 
-FastAPI-based Retrieval-Augmented Generation service using LangChain, ChromaDB, and OpenAI (or compatible) models. Inspired by the LangChain + Chroma pipeline from Sourav Ghosh's guide.
+This project is a minimal Retrieval-Augmented Generation (RAG) stack that uses FastAPI, LangChain, ChromaDB, and OpenAI to serve answers grounded in your own documents.
 
-## Features
+## Project structure
 
-- Index: upsert documents with automatic chunking and embeddings.
-- Retrieve: similarity search over Chroma.
-- Generate: RAG pipeline combining retrieved context with ChatOpenAI.
-- Config via env variables; structured logging; Docker + docker-compose.
+```
+backend/   # FastAPI + LangChain + ChromaDB backend
+frontend/  # Placeholder for UI; wire up to backend API when ready
+```
 
-## Quickstart
+## Backend quickstart
 
-1. Copy environment file and set secrets:
-   ```bash
-   cp env.example .env
-   # set OPENAI_API_KEY and (optionally) OPENAI_API_BASE/OPENAI_MODEL
-   ```
-2. Install dependencies (Poetry):
-   ```bash
-   poetry install
-   ```
-3. Run API locally:
-   ```bash
-   uvicorn app.main:app --reload
-   ```
-   Open http://localhost:8000/docs for interactive OpenAPI.
+1. Install dependencies (Python 3.10+ recommended):
+   - `cd backend`
+   - `poetry install`
+2. Configure environment:
+   - Copy `env.example` to `.env`.
+   - Set `OPENAI_API_KEY` and any other values (see below).
+3. Run the API:
+   - `poetry run uvicorn app.main:app --reload`
+4. Access the docs at `http://localhost:8000/docs`.
 
-## API
+## Key environment variables (`backend/env.example`)
 
-- `GET /health`: service heartbeat.
-- `POST /documents/upload`: upload a `.pdf` or `.txt` file. The file is chunked, embedded with OpenAI, and stored in Chroma.
-- `POST /chat/`: ask a question. Returns an answer plus the retrieved source chunks.
+- `APP_NAME` / `APP_DESCRIPTION`: Metadata shown in FastAPI docs.
+- `OPENAI_API_KEY`, `OPENAI_API_BASE`, `OPENAI_MODEL`, `OPENAI_EMBEDDING_MODEL`: OpenAI credentials and models.
+- `CHROMA_DATABASE`, `CHROMA_COLLECTION_NAME`: ChromaDB storage and collection.
+- `DATA_DIRECTORY`: Where uploaded/source documents are stored.
 
-## Notes
+## API overview
 
-- Vector store persistence lives under `./data/chroma` by default. Uploaded source files are saved to `./data/documents`.
-- Set `OPENAI_API_KEY` (and optionally `OPENAI_API_BASE`) in `.env` before running.
+- `GET /health`: Service health check.
+- `POST /upload`: Upload a document to be chunked and indexed into ChromaDB.
+- `POST /chat`: Chat endpoint that runs retrieval + generation over indexed docs.
+
+## Frontend
+
+The `frontend/` directory is a placeholder for a future UI. Point it at the backend API once implemented.
