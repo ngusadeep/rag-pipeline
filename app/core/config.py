@@ -19,15 +19,10 @@ class Settings(BaseSettings):
         default="text-embedding-3-small", alias="OPENAI_EMBEDDING_MODEL"
     )
 
-    chroma_persist_directory: str = Field(
-        default="./data/chroma", alias="CHROMA_PERSIST_DIRECTORY"
-    )
-    chroma_collection_name: str = Field(
-        default="bplus-rag", alias="CHROMA_COLLECTION_NAME"
-    )
-    chroma_api_key: str | None = Field(default=None, alias="CHROMA_API_KEY")
-    chroma_tenant: str | None = Field(default=None, alias="CHROMA_TENANT")
-    chroma_database: str | None = Field(default=None, alias="CHROMA_DATABASE")
+    pinecone_api_key: str = Field(default="", alias="PINECONE_API_KEY")
+    pinecone_index_name: str = Field(default="bplus-rag", alias="PINECONE_INDEX_NAME")
+    pinecone_cloud: str = Field(default="aws", alias="PINECONE_CLOUD")
+    pinecone_region: str = Field(default="us-east-1", alias="PINECONE_REGION")
     data_directory: str = Field(
         default="./data/documents", alias="DATA_DIRECTORY"
     )

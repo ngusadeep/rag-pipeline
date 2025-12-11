@@ -39,3 +39,11 @@ class GenerationRequest(QueryRequest):
 class GenerationResponse(BaseModel):
     answer: str
     citations: List[RetrievalResult]
+
+
+class IndexFromUrlRequest(BaseModel):
+    id: str = Field(..., description="Document id or external reference")
+    url: str = Field(..., description="Publicly accessible raw URL to fetch")
+    metadata: Optional[Dict[str, Any]] = Field(
+        default=None, description="Optional metadata to store with the doc"
+    )

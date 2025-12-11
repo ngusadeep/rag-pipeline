@@ -9,6 +9,7 @@ from app.models.schemas import (
     DocumentInput,
     GenerationRequest,
     GenerationResponse,
+    IndexFromUrlRequest,
     QueryRequest,
     QueryResponse,
     RetrievalResult,
@@ -16,8 +17,26 @@ from app.models.schemas import (
 from app.utils.prompts import get_rag_prompt
 from app.utils.text import get_text_splitter
 from .vector_store import similarity_search, upsert_documents
+from urllib import parse, request
+from io import BytesIO
+from pypdf import PdfReader
 
 logger = get_logger(__name__)
+
+
+def _normalize_github_url(url: str) -> str:
+    """Convert GitHub blob URLs to raw URLs so binary files fetch correctly."""
+    try:
+        parsed = parse.urlparse(url)
+        if parsed.netloc == "github.com" and "/blob/" in parsed.path:
+            new_path = parsed.path.replace("/blob/", "/", 1)
+            return parse.urlunparse(
+                parsed._replace(netloc="raw.githubusercontent.com", path=new_path)
+            )
+    except Exception:
+        # Fallback to original URL if normalization fails.
+        return url
+    return url
 
 
 def _split_documents(doc_inputs: List[DocumentInput]) -> List[Document]:
@@ -35,6 +54,29 @@ def _split_documents(doc_inputs: List[DocumentInput]) -> List[Document]:
 def index_documents(payload: List[DocumentInput]) -> int:
     docs = _split_documents(payload)
     return upsert_documents(docs)
+
+
+def index_from_url(payload: IndexFromUrlRequest) -> int:
+    """Fetch a document from a URL (text or PDF) and index it."""
+    url = _normalize_github_url(payload.url)
+    if url != payload.url:
+        logger.debug("Normalized GitHub URL %s -> %s", payload.url, url)
+
+    resp = request.urlopen(url)
+    content_type = resp.headers.get("Content-Type", "")
+    raw_bytes = resp.read()
+
+    if "pdf" in content_type or payload.url.lower().endswith(".pdf"):
+        reader = PdfReader(BytesIO(raw_bytes))
+        pages_text = [page.extract_text() or "" for page in reader.pages]
+        content = "\n\n".join(pages_text)
+    else:
+        content = raw_bytes.decode("utf-8", errors="ignore")
+
+    doc = DocumentInput(
+        id=payload.id, text=content, metadata=payload.metadata or {}
+    )
+    return index_documents([doc])
 
 
 def retrieve(payload: QueryRequest) -> QueryResponse:

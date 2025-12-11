@@ -53,8 +53,27 @@ Chroma persists to `data/chroma`. Update `.env` for model keys.
 - `app/utils/prompts.py` — shared prompt templates.
 - `app/utils/text.py` — text splitter helpers.
 - `app/utils/chroma_connection.py` — optional Chroma client/collection dependency.
+- `app/api/routes/index_from_url.py` — index a document by fetching from URL.
 - `data/` — persisted vector store and docs (gitkept).
 - `env.example` — sample environment variables.
+
+### Optional startup bootstrap indexing
+
+- Set `BOOTSTRAP_DOCUMENT_URL` and `BOOTSTRAP_DOCUMENT_ID` (and optional `BOOTSTRAP_DOCUMENT_SOURCE`) in `.env`. On startup, the service will fetch that URL (PDF or text), extract content, and index it into Chroma automatically.
+
+### Indexing from GitHub (PDF or text)
+
+- `POST /api/index_from_url` now fetches the URL. If the content is PDF (by content-type or `.pdf` suffix), it extracts text with `pypdf` first, then indexes. For text URLs it decodes UTF-8.
+- Example:
+  ```bash
+  curl -X POST http://localhost:8000/api/index_from_url \
+    -H "Content-Type: application/json" \
+    -d '{
+      "id": "biashara-plus-pdf",
+      "url": "https://raw.githubusercontent.com/ngusadeep/bplus-docs/main/Biashara%20Plus.pdf",
+      "metadata": { "source": "github" }
+    }'
+  ```
 
 ### Chroma local vs cloud
 
