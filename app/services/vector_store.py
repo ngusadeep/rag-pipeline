@@ -1,15 +1,20 @@
+from pathlib import Path
 from typing import Iterable, List
 import uuid
 
-from langchain_pinecone import PineconeVectorStore
+from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
 from langchain.schema import Document
-from pinecone import Pinecone, ServerlessSpec
 
 from app.core.config import get_settings
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+def _ensure_dir(path: str) -> str:
+    Path(path).mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def get_embeddings() -> OpenAIEmbeddings:
@@ -24,53 +29,25 @@ def get_embeddings() -> OpenAIEmbeddings:
     )
 
 
-def _init_pinecone_index_if_needed(client: Pinecone, index_name: str, dim: int, cloud: str, region: str) -> None:
-    index_list = client.list_indexes()
-    try:
-        names = index_list.names() if callable(getattr(index_list, "names", None)) else index_list.names
-    except Exception:
-        names = index_list if isinstance(index_list, list) else []
-    if index_name in names:
-        try:
-            desc = client.describe_index(name=index_name)
-            current_dim = desc.get("dimension") if isinstance(desc, dict) else getattr(desc, "dimension", None)
-            if current_dim and current_dim != dim:
-                logger.warning(
-                    "Pinecone index %s dimension mismatch (found=%s, expected=%s); recreating",
-                    index_name,
-                    current_dim,
-                    dim,
-                )
-                client.delete_index(name=index_name)
-                names.remove(index_name)
-        except Exception as exc:
-            logger.warning("Could not describe Pinecone index %s: %s", index_name, exc)
-
-    if index_name not in names:
-        client.create_index(
-            name=index_name,
-            dimension=dim,
-            metric="cosine",
-            spec=ServerlessSpec(cloud=cloud, region=region),
-        )
-        logger.info("Created Pinecone index %s (dim=%s, cloud=%s, region=%s)", index_name, dim, cloud, region)
-
-
-def get_vector_store() -> PineconeVectorStore:
+def get_vector_store() -> Chroma:
     settings = get_settings()
     embeddings = get_embeddings()
-    pinecone_client = Pinecone(api_key=settings.pinecone_api_key)
-    dim = len(embeddings.embed_query("ping"))
-    _init_pinecone_index_if_needed(
-        pinecone_client,
-        settings.pinecone_index_name,
-        dim,
-        settings.pinecone_cloud,
-        settings.pinecone_region,
+    persist_dir = _ensure_dir(settings.chroma_persist_directory)
+    logger.info(
+        "Using Chroma (persist=%s, collection=%s)",
+        persist_dir,
+        settings.chroma_collection_name,
     )
-    logger.info("Using Pinecone (index=%s)", settings.pinecone_index_name)
-    index = pinecone_client.Index(settings.pinecone_index_name)
-    return PineconeVectorStore(index=index, embedding=embeddings)
+    return Chroma(
+        collection_name=settings.chroma_collection_name,
+        embedding_function=embeddings,
+        persist_directory=persist_dir,
+    )
+
+
+def get_retriever(k: int = 4):
+    """Return a retriever with configurable k."""
+    return get_vector_store().as_retriever(search_kwargs={"k": k})
 
 
 def upsert_documents(documents: Iterable[Document]) -> int:
@@ -86,7 +63,8 @@ def upsert_documents(documents: Iterable[Document]) -> int:
         else:
             ids.append(str(uuid.uuid4()))
     vector_store.add_documents(list(documents), ids=ids)
-    logger.info("Upserted %s documents into Pinecone", len(ids))
+    vector_store.persist()
+    logger.info("Upserted %s documents into Chroma", len(ids))
     return len(ids)
 
 

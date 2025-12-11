@@ -2,6 +2,8 @@ from typing import List
 
 from langchain.docstore.document import Document
 from langchain_openai import ChatOpenAI
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
 
 from app.core.config import get_settings
 from app.core.logging_config import get_logger
@@ -9,14 +11,13 @@ from app.models.schemas import (
     DocumentInput,
     GenerationRequest,
     GenerationResponse,
-    IndexFromUrlRequest,
     QueryRequest,
     QueryResponse,
     RetrievalResult,
 )
 from app.utils.prompts import get_rag_prompt
 from app.utils.text import get_text_splitter
-from .vector_store import similarity_search, upsert_documents
+from .vector_store import get_retriever, similarity_search, upsert_documents
 from urllib import parse, request
 from io import BytesIO
 from pypdf import PdfReader
@@ -56,29 +57,6 @@ def index_documents(payload: List[DocumentInput]) -> int:
     return upsert_documents(docs)
 
 
-def index_from_url(payload: IndexFromUrlRequest) -> int:
-    """Fetch a document from a URL (text or PDF) and index it."""
-    url = _normalize_github_url(payload.url)
-    if url != payload.url:
-        logger.debug("Normalized GitHub URL %s -> %s", payload.url, url)
-
-    resp = request.urlopen(url)
-    content_type = resp.headers.get("Content-Type", "")
-    raw_bytes = resp.read()
-
-    if "pdf" in content_type or payload.url.lower().endswith(".pdf"):
-        reader = PdfReader(BytesIO(raw_bytes))
-        pages_text = [page.extract_text() or "" for page in reader.pages]
-        content = "\n\n".join(pages_text)
-    else:
-        content = raw_bytes.decode("utf-8", errors="ignore")
-
-    doc = DocumentInput(
-        id=payload.id, text=content, metadata=payload.metadata or {}
-    )
-    return index_documents([doc])
-
-
 def retrieve(payload: QueryRequest) -> QueryResponse:
     matches = similarity_search(payload.query, k=payload.k)
     results: List[RetrievalResult] = []
@@ -108,16 +86,27 @@ def _get_chat_model() -> ChatOpenAI:
 
 
 def generate(payload: GenerationRequest) -> GenerationResponse:
-    query_response = retrieve(payload)
+    """Generate an answer using the notebook-style RAG chain (retriever → prompt → LLM)."""
+    retriever = get_retriever(payload.k)
+
+    def _format_docs(docs: List[Document]) -> str:
+        return "\n\n".join(
+            f"[{doc.metadata.get('id')}] {doc.page_content}" for doc in docs
+        )
+
     prompt = get_rag_prompt()
-    context = "\n\n".join(
-        f"[{res.id}] {res.text}" for res in query_response.results
+    llm = _get_chat_model()
+    chain = (
+        {"context": retriever | _format_docs, "question": RunnablePassthrough()}
+        | prompt
+        | llm
+        | StrOutputParser()
     )
 
-    llm = _get_chat_model()
-    chain = prompt | llm
-    answer = chain.invoke({"context": context, "question": payload.query})
+    answer_text = chain.invoke(payload.query)
+    # Also return structured citations from a similarity search.
+    query_response = retrieve(payload)
     logger.info("Generated answer for query")
     return GenerationResponse(
-        answer=answer.content, citations=query_response.results
+        answer=answer_text, citations=query_response.results
     )
