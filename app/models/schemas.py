@@ -1,35 +1,30 @@
+"""Pydantic schemas for API requests and responses."""
+
+from typing import List
+
 from pydantic import BaseModel, Field
-from typing import Any, Dict, List, Optional
 
 
-class DocumentInput(BaseModel):
-    id: str = Field(..., description="Document id or external reference")
-    text: str = Field(..., description="Raw document text to index")
-    metadata: Optional[Dict[str, Any]] = Field(
-        default=None, description="Optional metadata to store with the doc"
-    )
+class HealthResponse(BaseModel):
+    status: str = "ok"
 
 
-class QueryRequest(BaseModel):
-    query: str = Field(..., description="User query")
-    k: int = Field(default=4, description="Number of documents to retrieve")
+class UploadResponse(BaseModel):
+    filename: str
+    chunks: int
+    collection: str
 
 
-class RetrievalResult(BaseModel):
-    id: str
-    text: str
-    metadata: Dict[str, Any] | None = None
-    score: float | None = None
+class ChatRequest(BaseModel):
+    question: str = Field(..., examples=["What is BiasharaPlus?"])
+    top_k: int = Field(default=4, ge=1, le=10)
 
 
-class QueryResponse(BaseModel):
-    results: List[RetrievalResult]
+class SourceChunk(BaseModel):
+    content: str
+    metadata: dict
 
 
-class GenerationRequest(QueryRequest):
-    pass
-
-
-class GenerationResponse(BaseModel):
+class ChatResponse(BaseModel):
     answer: str
-    citations: List[RetrievalResult]
+    sources: List[SourceChunk]

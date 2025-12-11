@@ -1,49 +1,36 @@
-import json
-from io import BytesIO
-from typing import Any, Dict
+"""Document ingestion endpoint."""
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from pypdf import PdfReader
+import shutil
 
-from app.models.schemas import DocumentInput
-from app.services import rag
+from fastapi import APIRouter, File, HTTPException, UploadFile, status
 
-router = APIRouter(tags=["indexing"])
+from app.core.config import get_settings
+from app.models.schemas import UploadResponse
+from app.services.rag import ingest_file
+
+router = APIRouter()
+
+ALLOWED_TYPES = {"application/pdf", "text/plain", "application/octet-stream"}
 
 
-@router.post("/upload", response_model=dict[str, int])
-async def upload_document(
-    file: UploadFile = File(...),
-    id: str = Form(..., description="Document id or external reference"),
-    metadata: str | None = Form(
-        default=None,
-        description="Optional JSON string of metadata to store with the doc",
-    ),
-):
-    """Upload a single file (text or PDF), chunk, embed, and store in Chroma."""
-    raw_bytes = await file.read()
-    if not raw_bytes:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+@router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_201_CREATED)
+async def upload_document(file: UploadFile = File(...)) -> UploadResponse:
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported content type {file.content_type}",
+        )
 
-    meta: Dict[str, Any] = {}
-    if metadata:
-        try:
-            meta = json.loads(metadata)
-        except json.JSONDecodeError as exc:
-            raise HTTPException(
-                status_code=400, detail="metadata must be valid JSON"
-            ) from exc
+    settings = get_settings()
+    settings.documents_path.mkdir(parents=True, exist_ok=True)
+    destination = settings.documents_path / file.filename
 
-    is_pdf = "pdf" in (file.content_type or "").lower() or file.filename.lower().endswith(
-        ".pdf"
+    with destination.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    chunk_count = ingest_file(destination)
+    return UploadResponse(
+        filename=file.filename,
+        chunks=chunk_count,
+        collection=settings.chroma_collection_name,
     )
-    if is_pdf:
-        reader = PdfReader(BytesIO(raw_bytes))
-        pages_text = [page.extract_text() or "" for page in reader.pages]
-        content = "\n\n".join(pages_text)
-    else:
-        content = raw_bytes.decode("utf-8", errors="ignore")
-
-    doc = DocumentInput(id=id, text=content, metadata=meta)
-    count = rag.index_documents([doc])
-    return {"indexed": count}

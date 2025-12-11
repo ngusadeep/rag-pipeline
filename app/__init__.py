@@ -1,1 +1,1 @@
-# Makes app a package.
+"""BiasharaPlus RAG FastAPI application package."""

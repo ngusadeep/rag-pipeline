@@ -1,73 +1,52 @@
-from pathlib import Path
-from typing import Iterable, List
-import uuid
+"""Chroma vector store helpers."""
 
-from langchain_community.vectorstores import Chroma
+from pathlib import Path
+from typing import List, Optional
+
+from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
-from langchain.schema import Document
 
 from app.core.config import get_settings
-from app.core.logging_config import get_logger
 
-logger = get_logger(__name__)
-
-
-def _ensure_dir(path: str) -> str:
-    Path(path).mkdir(parents=True, exist_ok=True)
-    return path
+_vector_store: Optional[Chroma] = None
+_embeddings: Optional[OpenAIEmbeddings] = None
 
 
 def get_embeddings() -> OpenAIEmbeddings:
-    settings = get_settings()
-    embed_kwargs = {}
-    if settings.openai_api_base:
-        embed_kwargs["base_url"] = settings.openai_api_base
-    return OpenAIEmbeddings(
-        api_key=settings.openai_api_key,
-        model=settings.openai_embedding_model,
-        **embed_kwargs,
-    )
+    """Singleton embeddings client."""
+    global _embeddings
+    if _embeddings is None:
+        settings = get_settings()
+        _embeddings = OpenAIEmbeddings(
+            model=settings.openai_embedding_model,
+            api_key=settings.openai_api_key,
+            base_url=settings.openai_api_base,
+        )
+    return _embeddings
 
 
 def get_vector_store() -> Chroma:
-    settings = get_settings()
-    embeddings = get_embeddings()
-    persist_dir = _ensure_dir(settings.chroma_persist_directory)
-    logger.info(
-        "Using Chroma (persist=%s, collection=%s)",
-        persist_dir,
-        settings.chroma_collection_name,
-    )
-    return Chroma(
-        collection_name=settings.chroma_collection_name,
-        embedding_function=embeddings,
-        persist_directory=persist_dir,
-    )
+    """Singleton persistent Chroma instance."""
+    global _vector_store
+    if _vector_store is None:
+        settings = get_settings()
+        persist_dir: Path = settings.chroma_path
+        persist_dir.mkdir(parents=True, exist_ok=True)
+        _vector_store = Chroma(
+            collection_name=settings.chroma_collection_name,
+            embedding_function=get_embeddings(),
+            persist_directory=str(persist_dir),
+        )
+    return _vector_store
 
 
-def get_retriever(k: int = 4):
-    """Return a retriever with configurable k."""
-    return get_vector_store().as_retriever(search_kwargs={"k": k})
-
-
-def upsert_documents(documents: Iterable[Document]) -> int:
+def add_texts(chunks: List[str], metadatas: Optional[List[dict]] = None) -> int:
+    """Add text chunks to vector store."""
     vector_store = get_vector_store()
-    ids: List[str] = []
-    for doc in documents:
-        doc_id = doc.metadata.get("id") if doc.metadata else None
-        if doc_id:
-            try:
-                ids.append(str(uuid.UUID(str(doc_id))))
-            except Exception:
-                ids.append(str(uuid.uuid5(uuid.NAMESPACE_URL, str(doc_id))))
-        else:
-            ids.append(str(uuid.uuid4()))
-    vector_store.add_documents(list(documents), ids=ids)
-    vector_store.persist()
-    logger.info("Upserted %s documents into Chroma", len(ids))
-    return len(ids)
+    vector_store.add_texts(chunks, metadatas=metadatas)
+    return len(chunks)
 
 
-def similarity_search(query: str, k: int = 4):
-    vector_store = get_vector_store()
-    return vector_store.similarity_search_with_score(query, k=k)
+def search(query: str, *, k: int = 4):
+    """Similarity search over stored documents."""
+    return get_vector_store().similarity_search(query, k=k)

@@ -1,43 +1,46 @@
-from functools import lru_cache
+"""Application settings loaded from environment variables."""
 
-from pydantic import Field
+from functools import lru_cache
+from pathlib import Path
+from typing import Optional
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = Field(default="BiasharaPlus RAG API", alias="APP_NAME")
-    app_description: str = Field(
-        default="RAG service built with FastAPI, LangChain, and ChromaDB.",
-        alias="APP_DESCRIPTION",
+    # FastAPI metadata
+    app_name: str = "BiasharaPlus RAG API"
+    app_description: str = (
+        "RAG over BiasharaPlus docs using FastAPI, LangChain, ChromaDB, and OpenAI."
     )
-    app_version: str = Field(default="0.1.0", alias="APP_VERSION")
-    app_author: str = Field(default="iPF Softwares", alias="APP_AUTHOR")
+    app_version: str = "0.1.0"
+    app_author: str = "iPF Softwares"
 
-    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
-    openai_api_base: str | None = Field(default=None, alias="OPENAI_API_BASE")
-    openai_model: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL")
-    openai_embedding_model: str = Field(
-        default="text-embedding-3-small", alias="OPENAI_EMBEDDING_MODEL"
-    )
+    # OpenAI
+    openai_api_key: str
+    openai_api_base: Optional[str] = None
+    openai_model: str = "gpt-4o-mini"
+    openai_embedding_model: str = "text-embedding-3-small"
 
-    chroma_persist_directory: str = Field(
-        default="./data/chroma", alias="CHROMA_PERSIST_DIRECTORY"
-    )
-    chroma_collection_name: str = Field(
-        default="bplus-rag", alias="CHROMA_COLLECTION_NAME"
-    ) 
-    data_directory: str = Field(
-        default="./data/documents", alias="DATA_DIRECTORY"
-    )
+    # Chroma / data
+    chroma_api_key: Optional[str] = None  # kept for future remote deployments
+    chroma_tenant: Optional[str] = None
+    chroma_database: str = "./data/chroma"
+    chroma_collection_name: str = "bplus-rag"
+    data_directory: str = "./data/documents"
 
-    log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+    # Logging
+    log_level: str = "INFO"
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore",
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="", extra="ignore")
+
+    @property
+    def chroma_path(self) -> Path:
+        return Path(self.chroma_database).expanduser().resolve()
+
+    @property
+    def documents_path(self) -> Path:
+        return Path(self.data_directory).expanduser().resolve()
 
 
 @lru_cache

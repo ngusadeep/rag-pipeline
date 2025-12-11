@@ -1,24 +1,43 @@
+"""FastAPI entrypoint for the BiasharaPlus RAG API."""
+
+import logging
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import router as api_router
+from app.api.routes import api_router
 from app.core.config import get_settings
-from app.core.logging_config import configure_logging, get_logger
-
-configure_logging()
-logger = get_logger(__name__)
-settings = get_settings()
-
-app = FastAPI(
-    title=settings.app_name,
-    description=settings.app_description,
-    version=settings.app_version,
-    contact={"name": settings.app_author},
-)
+from app.core.logging_config import configure_logging
+from app.services.vector_store import get_vector_store
 
 
-@app.on_event("startup")
-async def startup_event() -> None:
-    logger.info("Starting %s v%s", settings.app_name, settings.app_version)
+def create_app() -> FastAPI:
+    configure_logging()
+    settings = get_settings()
+
+    app = FastAPI(
+        title=settings.app_name,
+        description=settings.app_description,
+        version=settings.app_version,
+        contact={"name": settings.app_author},
+    )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    @app.on_event("startup")
+    async def _startup_event() -> None:
+        # Ensure vector store is initialised and data folders exist
+        settings.documents_path.mkdir(parents=True, exist_ok=True)
+        get_vector_store()
+        logging.getLogger(__name__).info("Application started; vector store ready.")
+
+    app.include_router(api_router)
+    return app
 
 
-app.include_router(api_router, prefix="/api")
+app = create_app()
