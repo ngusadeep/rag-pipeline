@@ -52,8 +52,14 @@ Chroma persists to `data/chroma`. Update `.env` for model keys.
 - `app/models/schemas.py` — request/response models.
 - `app/utils/prompts.py` — shared prompt templates.
 - `app/utils/text.py` — text splitter helpers.
+- `app/utils/chroma_connection.py` — optional Chroma client/collection dependency.
 - `data/` — persisted vector store and docs (gitkept).
 - `env.example` — sample environment variables.
+
+### Chroma local vs cloud
+
+- Local (default): set `CHROMA_PERSIST_DIRECTORY`, leave `CHROMA_API_KEY` unset.
+- Cloud: set `CHROMA_API_KEY`, `CHROMA_TENANT`, `CHROMA_DATABASE`, and `CHROMA_COLLECTION_NAME`. The app will auto-use Chroma Cloud.
 
 ## Notes
 

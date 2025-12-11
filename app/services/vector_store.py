@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Iterable, List
 
+import chromadb
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
 from langchain.schema import Document
@@ -9,7 +10,6 @@ from app.core.config import get_settings
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
-
 
 def _ensure_persist_dir(path: str) -> str:
     Path(path).mkdir(parents=True, exist_ok=True)
@@ -30,10 +30,32 @@ def get_embeddings() -> OpenAIEmbeddings:
 
 def get_vector_store() -> Chroma:
     settings = get_settings()
-    persist_directory = _ensure_persist_dir(settings.chroma_persist_directory)
     embeddings = get_embeddings()
+
+    # If cloud credentials are provided, use Chroma Cloud; otherwise local persistence.
+    if (
+        settings.chroma_api_key
+        and settings.chroma_tenant
+        and settings.chroma_database
+    ):
+        client = chromadb.CloudClient(
+            api_key=settings.chroma_api_key,
+            tenant=settings.chroma_tenant,
+            database=settings.chroma_database,
+        )
+        logger.info("Using Chroma Cloud (collection=%s)", settings.chroma_collection_name)
+        return Chroma(
+            client=client,
+            collection_name=settings.chroma_collection_name,
+            embedding_function=embeddings,
+        )
+
+    persist_directory = _ensure_persist_dir(settings.chroma_persist_directory)
+    logger.info("Using local Chroma (persist=%s, collection=%s)", persist_directory, settings.chroma_collection_name)
     return Chroma(
-        embedding_function=embeddings, persist_directory=persist_directory
+        embedding_function=embeddings,
+        persist_directory=persist_directory,
+        collection_name=settings.chroma_collection_name,
     )
 
 
