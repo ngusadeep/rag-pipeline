@@ -1,68 +1,54 @@
-# BiasharaPlus RAG API
+# Basic RAG Pipeline (LangChain + OpenAI + ChromaDB)
 
-FastAPI-based Retrieval-Augmented Generation service using LangChain, ChromaDB, and OpenAI (or compatible) models.
+Minimal Retrieval-Augmented Generation stack: FastAPI backend with LangChain + ChromaDB + OpenAI, plus a Next.js frontend scaffold you can wire up to the API.
 
-## Features
+## Project structure
 
-- Index: upsert documents with automatic chunking and embeddings.
-- Retrieve: similarity search over Chroma.
-- Generate: RAG pipeline combining retrieved context with ChatOpenAI.
-- Config via env variables; structured logging; Docker + docker-compose.
-
-## Quickstart
-
-1. Copy environment file and set secrets:
-   ```bash
-   cp env.example .env
-   # set OPENAI_API_KEY and (optionally) OPENAI_API_BASE/OPENAI_MODEL
-   ```
-2. Install dependencies (Poetry):
-   ```bash
-   poetry install
-   ```
-3. Run API locally:
-   ```bash
-   uvicorn app.main:app --reload
-   ```
-   Open http://localhost:8000/docs for interactive OpenAPI.
-
-### With Docker Compose
-
-```bash
-docker-compose up --build
+```
+backend/    # FastAPI + LangChain + ChromaDB API (Poetry)
+frontend/   # Next.js app scaffold (Bun)
 ```
 
-Chroma persists to `data/chroma`. Update `.env` for model keys.
+## Backend quickstart
 
-## API
+1. Install (Python 3.10+):
+   - `cd backend`
+   - `poetry install`
+2. Configure environment:
+   - `cp env.example .env`
+   - Set `OPENAI_API_KEY` (and other values as needed).
+3. Run:
+   - `poetry run uvicorn app.main:app --reload`
+4. Docs: `http://localhost:8000/docs`
 
-- `GET /api/health` — service health.
-- `POST /api/index` — body `{ "documents": [ { "id": "...", "text": "...", "metadata": {...} } ] }`.
-- `POST /api/retrieve` — body `{ "query": "...", "k": 4 }`.
-- `POST /api/generate` — body `{ "query": "...", "k": 4 }`.
+## Frontend quickstart
 
-## Project Structure
+1. Install (requires Bun):
+   - `cd frontend`
+   - `bun install`
+2. Run dev server:
+   - `bun dev`
+3. Point the UI to the backend API (default `http://localhost:8000`); update env/config in the frontend as you build features.
 
-- `app/main.py` — FastAPI app entry.
-- `app/api/routes/` — route modules for health, index, retrieve, generate.
-- `app/services/rag.py` — RAG orchestration (index/retrieve/generate).
-- `app/services/vector_store.py` — Chroma + embeddings management.
-- `app/core/config.py` — Pydantic settings from env.
-- `app/core/logging_config.py` — structured logging.
-- `app/models/schemas.py` — request/response models.
-- `app/utils/prompts.py` — shared prompt templates.
-- `app/utils/text.py` — text splitter helpers.
-- `app/utils/chroma_connection.py` — optional Chroma client/collection dependency.
-- `data/` — persisted vector store and docs (gitkept).
-- `env.example` — sample environment variables.
+## Key environment variables (`backend/env.example`)
 
-### Chroma local vs cloud
+- `APP_NAME` / `APP_DESCRIPTION`: Shown in FastAPI docs.
+- `OPENAI_API_KEY`, `OPENAI_API_BASE`, `OPENAI_MODEL`, `OPENAI_EMBEDDING_MODEL`: OpenAI credentials/models.
+- `CHROMA_DATABASE`, `CHROMA_COLLECTION_NAME`: ChromaDB storage/collection.
+- `DATA_DIRECTORY`: Where uploaded/source documents are stored.
 
-- Local (default): set `CHROMA_PERSIST_DIRECTORY`, leave `CHROMA_API_KEY` unset.
-- Cloud: set `CHROMA_API_KEY`, `CHROMA_TENANT`, `CHROMA_DATABASE`, and `CHROMA_COLLECTION_NAME`. The app will auto-use Chroma Cloud.
+## API overview
+
+- `GET /health`: Health check.
+- `POST /upload`: Upload a document to be chunked and indexed into ChromaDB.
+- `POST /chat`: Retrieval + generation over indexed docs.
+
+## Data locations
+
+- Chroma DB: `backend/data/chroma`
+- Uploaded/source docs: `backend/data/documents`
 
 ## Notes
 
-- Uses `RecursiveCharacterTextSplitter` (800/100 overlap).
-- Uses `ChatOpenAI` and `OpenAIEmbeddings`; set `OPENAI_API_BASE` for OpenAI-compatible providers.
-- Keep `CHROMA_PERSIST_DIRECTORY` mounted when using containers to retain embeddings.
+- Keep your secrets in `backend/.env` (ignored by git).
+- Defaults in code can be overridden via `.env`. Align app metadata there as needed.
