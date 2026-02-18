@@ -35,7 +35,9 @@ def create_app() -> FastAPI:
         # Ensure vector store (Zvec) and document folders exist
         settings.documents_path.mkdir(parents=True, exist_ok=True)
         get_vector_store()
-        logging.getLogger(__name__).info("Application started; Zvec vector store ready.")
+        logging.getLogger(__name__).info(
+            "Application started; Zvec vector store ready."
+        )
 
     app.include_router(api_router)
     return app

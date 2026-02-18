@@ -3,9 +3,8 @@
 from pathlib import Path
 from typing import List, Tuple
 
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.documents import Document
+from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI
 from pypdf import PdfReader
 
@@ -47,14 +46,24 @@ def ingest_file(path: Path) -> int:
 def get_retrieval_chain(top_k: int = 4):
     vector_store = get_vector_store()
     retriever = vector_store.as_retriever(search_kwargs={"k": top_k})
-    doc_chain = create_stuff_documents_chain(get_llm(), rag_prompt)
-    return create_retrieval_chain(retriever, doc_chain)
+
+    def format_docs(docs):
+        return "\n\n".join(doc.page_content for doc in docs)
+
+    chain = (
+        {"context": retriever | format_docs, "input": RunnablePassthrough()}
+        | rag_prompt
+        | get_llm()
+    )
+    return chain
 
 
 def answer_question(question: str, top_k: int = 4) -> Tuple[str, List[Document]]:
     """Run RAG chain and return answer plus source documents."""
     chain = get_retrieval_chain(top_k=top_k)
-    result = chain.invoke({"input": question})
-    answer = result["answer"]
-    sources: List[Document] = result.get("context", [])
+    vector_store = get_vector_store()
+    retriever = vector_store.as_retriever(search_kwargs={"k": top_k})
+    sources = retriever.invoke(question)
+    response = chain.invoke(question)
+    answer = response.content if hasattr(response, "content") else str(response)
     return answer, sources
