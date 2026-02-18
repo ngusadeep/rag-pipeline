@@ -1,1 +1,1 @@
-"""BiasharaPlus RAG FastAPI application package."""
+"""RAG Pipeline FastAPI application package."""

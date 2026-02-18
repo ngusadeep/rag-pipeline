@@ -3,7 +3,7 @@
 import logging
 from typing import Optional
 
-from .config import get_settings
+from app.core.config import get_settings
 
 
 def configure_logging(level: Optional[str] = None) -> None:

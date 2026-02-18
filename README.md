@@ -1,10 +1,6 @@
-<<<<<<< HEAD
-# Basic RAG Pipeline (LangChain + OpenAI + Zvec)
-=======
-# Retreival Augmented Generation RAG Pipeline (LangChain + OpenAI + Zvec Vector DB )
->>>>>>> 905db41fe6e4df0511b24dc1ceddb51659fae62c
+# RAG Pipeline (LangChain + OpenAI + Zvec)
 
-Minimal Retrieval-Augmented Generation stack: FastAPI backend with LangChain + [Zvec](https://github.com/alibaba/zvec) (in-process vector DB) + OpenAI, plus a Next.js frontend scaffold you can wire up to the API.
+Retrieval-Augmented Generation pipeline: FastAPI backend with LangChain + [Zvec](https://github.com/alibaba/zvec) (in-process vector DB) + OpenAI, plus a Next.js frontend you can wire up to the API.
 
 ## Project structure
 
@@ -15,15 +11,28 @@ frontend/   # Next.js app scaffold (Bun)
 
 ## Backend quickstart
 
-1. Install (Python 3.10+):
-   - `cd backend`
-   - `poetry install`
-2. Configure environment:
+### Option 1: Docker (Recommended)
+
+1. Configure environment:
    - `cp env.example .env`
    - Set `OPENAI_API_KEY` (and other values as needed).
-3. Run:
-   - `poetry run uvicorn app.main:app --reload`
-4. Docs: `http://localhost:8000/docs`
+2. Run with Docker Compose:
+   - `docker-compose up --build`
+3. Docs: `http://localhost:8000/docs`
+
+### Option 2: Local Development (Python 3.12+)
+
+1. Install with uv (recommended):
+   - `uv sync`
+2. Or with pip:
+   - `pip install -e .`
+3. Configure environment:
+   - `cp env.example .env`
+   - Set `OPENAI_API_KEY` (and other values as needed).
+4. Run:
+   - `uvicorn app.main:app --reload`
+   - Or with uv: `uv run uvicorn app.main:app --reload`
+5. Docs: `http://localhost:8000/docs`
 
 ## Frontend quickstart
 

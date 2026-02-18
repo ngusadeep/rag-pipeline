@@ -16,7 +16,7 @@ class UploadResponse(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    question: str = Field(..., examples=["What is BiasharaPlus?"])
+    question: str = Field(..., examples=["What is this document about?"])
     top_k: int = Field(default=4, ge=1, le=10)
 
 

@@ -9,9 +9,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # FastAPI metadata
-    app_name: str = "BiasharaPlus RAG API"
+    app_name: str = "RAG Pipeline"
     app_description: str = (
-        "RAG over BiasharaPlus docs using FastAPI, LangChain, Zvec, and OpenAI."
+        "Retrieval-Augmented Generation pipeline using FastAPI, LangChain, Zvec, and OpenAI."
     )
     app_version: str = "0.1.0"
     app_author: str = "iPF Softwares"
