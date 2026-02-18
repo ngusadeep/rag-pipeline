@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # Basic RAG Pipeline (LangChain + OpenAI + Zvec)
+=======
+# Retreival Augmented Generation RAG Pipeline (LangChain + OpenAI + Zvec Vector DB )
+>>>>>>> 905db41fe6e4df0511b24dc1ceddb51659fae62c
 
 Minimal Retrieval-Augmented Generation stack: FastAPI backend with LangChain + [Zvec](https://github.com/alibaba/zvec) (in-process vector DB) + OpenAI, plus a Next.js frontend scaffold you can wire up to the API.
 
