@@ -1,4 +1,4 @@
-# Basic RAG Pipeline (LangChain + OpenAI + ChromaDB)
+# Retreival Augmented Generation RAG Pipeline (LangChain + OpenAI + Zvec Vector DB )
 
 Minimal Retrieval-Augmented Generation stack: FastAPI backend with LangChain + ChromaDB + OpenAI, plus a Next.js frontend scaffold you can wire up to the API.
 
